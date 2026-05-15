@@ -62,7 +62,7 @@ class _ImageDetectionScreenState extends State<ImageDetectionScreen> {
         }
       }
 
-      final results = widget.detectionService.runOnRgbBytes(rgb);
+      final results = await widget.detectionService.runOnRgbBytes(rgb);
       widget.logger.log(results, 'image');
 
       if (results.isNotEmpty) {

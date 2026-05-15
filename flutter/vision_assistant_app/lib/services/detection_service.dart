@@ -53,7 +53,7 @@ class DetectionService {
   }
 
   Future<void> _loadModel() async {
-    _interpreter = await Interpreter.fromAsset('assets/models/detect_voc.tflite');
+    _interpreter = await Interpreter.fromAsset('assets/models/epoch_460.weights.tflite');
   }
 
   Future<void> _loadLabels() async {

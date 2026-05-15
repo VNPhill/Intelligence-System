@@ -128,7 +128,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/models/detect_voc.tflite
+    - assets/models/epoch_460.weights.tflite
     - assets/models/labelmap_voc.txt
 
     

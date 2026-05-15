@@ -29,6 +29,7 @@ class _LiveCameraScreenState extends State<LiveCameraScreen> {
   bool _isDetecting = true;
   bool _cameraReady = false;
   double _threshold = 0.5;
+  bool _isFrontCamera = false;
 
   @override
   void initState() {
@@ -36,9 +37,22 @@ class _LiveCameraScreenState extends State<LiveCameraScreen> {
     _initCamera();
   }
 
-  Future<void> _initCamera() async {
+  Future<void> _initCamera({bool front = false}) async {
+    // dispose existing controller if switching
+    if (_cameraReady) {
+      await _cameraController.stopImageStream();
+      await _cameraController.dispose();
+      setState(() => _cameraReady = false);
+    }
+
+    final camera = cameras.firstWhere(
+      (c) => c.lensDirection ==
+          (front ? CameraLensDirection.front : CameraLensDirection.back),
+      orElse: () => cameras[0],
+    );
+
     _cameraController = CameraController(
-      cameras[0],
+      camera,
       ResolutionPreset.medium,
       enableAudio: false,
     );
@@ -47,23 +61,31 @@ class _LiveCameraScreenState extends State<LiveCameraScreen> {
     if (mounted) setState(() => _cameraReady = true);
   }
 
+  Future<void> _switchCamera() async {
+    setState(() => _isFrontCamera = !_isFrontCamera);
+    await _initCamera(front: _isFrontCamera);
+  }
+
+
   void _processFrame(CameraImage image) {
     if (!_isDetecting || _isBusy) return;
     _isBusy = true;
 
-    final results = widget.detectionService.runOnCameraImage(
+    widget.detectionService.runOnCameraImage(
       image,
       threshold: _threshold,
-    );
-
-    widget.logger.log(results, 'live');
-    widget.audioService.announce(results);
-
-    if (mounted) {
-      setState(() => _detections = results);
-    }
-    _isBusy = false;
+    ).then((results) {
+      widget.logger.log(results, 'live');
+      widget.audioService.announce(results);
+      if (mounted) {
+        setState(() => _detections = results);
+      }
+      _isBusy = false;
+    }).catchError((_) {
+      _isBusy = false;
+    });
   }
+
 
   void _toggleDetection() {
     setState(() => _isDetecting = !_isDetecting);
@@ -125,11 +147,16 @@ class _LiveCameraScreenState extends State<LiveCameraScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
-            _iconButton(
-              Icons.arrow_back_rounded,
-              () => Navigator.pop(context),
-            ),
+            _iconButton(Icons.arrow_back_rounded, () => Navigator.pop(context)),
             const Spacer(),
+            // ← new button here
+            _iconButton(
+              _isFrontCamera
+                  ? Icons.camera_front_rounded
+                  : Icons.camera_rear_rounded,
+              _switchCamera,
+            ),
+            const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
@@ -140,8 +167,7 @@ class _LiveCameraScreenState extends State<LiveCameraScreen> {
                 children: [
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
-                    width: 8,
-                    height: 8,
+                    width: 8, height: 8,
                     decoration: BoxDecoration(
                       color: _isDetecting ? AppTheme.danger : AppTheme.textSecondary,
                       shape: BoxShape.circle,
@@ -151,10 +177,8 @@ class _LiveCameraScreenState extends State<LiveCameraScreen> {
                   Text(
                     _isDetecting ? 'LIVE' : 'PAUSED',
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.5,
+                      color: Colors.white, fontSize: 11,
+                      fontWeight: FontWeight.w700, letterSpacing: 1.5,
                     ),
                   ),
                 ],
@@ -165,10 +189,7 @@ class _LiveCameraScreenState extends State<LiveCameraScreen> {
               widget.audioService.enabled
                   ? Icons.volume_up_rounded
                   : Icons.volume_off_rounded,
-              () {
-                widget.audioService.toggle();
-                setState(() {});
-              },
+              () { widget.audioService.toggle(); setState(() {}); },
             ),
           ],
         ),
