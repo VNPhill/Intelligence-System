@@ -48,19 +48,21 @@ class _ImageDetectionScreenState extends State<ImageDetectionScreen> {
     try {
       final bytes = await file.readAsBytes();
       final decoded = img.decodeImage(bytes);
+      if (decoded == null) return;
 
-      if (decoded == null) {
-        setState(() => _isProcessing = false);
-        return;
+      final resized = img.copyResize(decoded, width: 300, height: 300);
+      final rgb = Uint8List(300 * 300 * 3);
+      int idx = 0;
+      for (int y = 0; y < 300; y++) {
+        for (int x = 0; x < 300; x++) {
+          final pixel = resized.getPixel(x, y);
+          rgb[idx++] = pixel.r.toInt();
+          rgb[idx++] = pixel.g.toInt();
+          rgb[idx++] = pixel.b.toInt();
+        }
       }
 
-      final results = await widget.detectionService.runOnImageMultiScale(
-        decoded,
-        threshold: 0.4,
-        centerScales: const [1.0, 0.8, 0.5],
-        nmsIouThreshold: 0.45,
-      );
-
+      final results = await widget.detectionService.runOnRgbBytes(rgb);
       widget.logger.log(results, 'image');
 
       if (results.isNotEmpty) {

@@ -31,11 +31,6 @@ class _LiveCameraScreenState extends State<LiveCameraScreen> {
   double _threshold = 0.35;
   bool _isFrontCamera = false;
 
-  static const List<double> _centerScales = [1.0, 0.8, 0.5];
-
-  int _processedFrameCount = 0;
-  bool _smallObjectMode = true;
-
   @override
   void initState() {
     super.initState();
@@ -74,40 +69,23 @@ class _LiveCameraScreenState extends State<LiveCameraScreen> {
 
   void _processFrame(CameraImage image) {
     if (!_isDetecting || _isBusy) return;
-
     _isBusy = true;
-    _processedFrameCount++;
 
-    final interval = _centerScales.isEmpty ? 1 : _centerScales.length;
-
-    final shouldUseMultiScale =
-        _smallObjectMode && _processedFrameCount % interval == 0;
-
-    final future = shouldUseMultiScale
-        ? widget.detectionService.runOnCameraImageMultiScale(
-            image,
-            threshold: _threshold,
-            centerScales: _centerScales,
-            nmsIouThreshold: 0.45,
-          )
-        : widget.detectionService.runOnCameraImage(
-            image,
-            threshold: _threshold,
-          );
-
-    future.then((results) {
+    widget.detectionService.runOnCameraImage(
+      image,
+      threshold: _threshold,
+    ).then((results) {
       widget.logger.log(results, 'live');
       widget.audioService.announce(results);
-
       if (mounted) {
         setState(() => _detections = results);
       }
-
       _isBusy = false;
     }).catchError((_) {
       _isBusy = false;
     });
   }
+
 
   void _toggleDetection() {
     setState(() => _isDetecting = !_isDetecting);
@@ -256,48 +234,6 @@ class _LiveCameraScreenState extends State<LiveCameraScreen> {
             ),
 
           const SizedBox(height: 16),
-
-          // Small object mode toggle
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppTheme.surface.withOpacity(0.9),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.center_focus_strong_rounded,
-                    color: AppTheme.textSecondary,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      'Small Object Mode',
-                      style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Switch(
-                    value: _smallObjectMode,
-                    activeColor: AppTheme.accent,
-                    onChanged: (v) {
-                      setState(() => _smallObjectMode = v);
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 10),
 
           // Threshold slider
           Padding(

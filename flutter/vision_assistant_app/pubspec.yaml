@@ -124,6 +124,15 @@ dependencies:
   # File path resolution for log export
   path_provider: ^2.1.2
 
+  # HTTP upload to server
+  http: ^1.2.2
+
+  # Save sharing ON/OFF setting
+  shared_preferences: ^2.2.3
+
+  # Check Wi-Fi / mobile / offline status
+  connectivity_plus: ^6.0.5
+
 flutter:
   uses-material-design: true
 
